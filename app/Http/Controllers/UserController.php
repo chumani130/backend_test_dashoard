@@ -35,13 +35,15 @@ class UserController extends Controller
     // Update an existing user
     public function update(Request $request, $id)
     {
-        $user = User::find($id);
+        $user = User::findOrFail($id);
         if ($user) {
-            $user->update($request->all());
-            return response()->json($user);
-        } else {
+            $user->update($request->only('email', 'password'));
+            return response()->json(['message' => 'User updated']);
+        } 
+        else {
             return response()->json(['message' => 'User not found'], 404);
         }
+        
     }
     
     // Delete a user
