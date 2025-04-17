@@ -9,13 +9,13 @@ class TamperAlertController extends Controller
     //Get all tamper alerts
     public function index()
     {
-        return tamperAlerts::width('device')->get();
+        return response()->json(TamperAlert::with('device')->get());
     }
 
     //Get a single tamper alert
     public function show($id)
     {
-        return tamperAlerts::width('device')->find($id);
+        return response()->json(TamperAlert::findOrFail($id));
     }
 
     //Create a new tamper alert
@@ -29,8 +29,8 @@ class TamperAlertController extends Controller
             'lng' => 'nullable|numeric',
         ]);
 
-        $alert = TamperAlert::create($validated);
-        return response()->json($alert, 201);
+        $tamperAlert = TamperAlert::create($validated);
+        return response()->json($tamperAlert, 201);
     }
     //Update a tamper alert
     public function update(Request $request, $id)
