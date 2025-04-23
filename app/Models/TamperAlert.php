@@ -23,6 +23,6 @@ class TamperAlert extends Model
     // Belongs to a device
     public function device()
     {
-        return $this->belongsTo(Device::class, 'device_id', 'device_id');
+        return $this->belongsTo(Device::class);
     }
 }
