@@ -19,17 +19,9 @@ class HeartbeatDataController extends Controller
     {
         $heartbeatData = HeartbeatData::find($id);
         if (!$heartbeatData) {
-            return response()->json(['message' => 'Heartbeat data not found'], 404);
-        }
-        return response()->json($heartbeatData);
-    }
-
-    // Get heartbeat data by device ID
-    public function getByDeviceId($deviceId)
-    {
-        $heartbeatData = HeartbeatData::where('device_id', $deviceId)->get();
-        if ($heartbeatData->isEmpty()) {
-            return response()->json(['message' => 'No heartbeat data found for this device'], 404);
+            return response()->json([
+                'message' => 'Heartbeat data not found'
+            ], 404);
         }
         return response()->json($heartbeatData);
     }
@@ -49,15 +41,20 @@ class HeartbeatDataController extends Controller
         ]);
 
         $heartbeatData = HeartbeatData::create($validated);
-        return response()->json($heartbeatData, 201);
+        return response()->json([
+            'message' => 'Heartbeat data created successfully',
+            'heartbeatData' => $heartbeatData
+        ], 201);
     }
 
     // Update an existing heartbeat data
     public function update(Request $request, $id)
     {
-        $heartbeatData = HeartbeatData::findOrFail($id);
+        $heartbeatData = HeartbeatData::find($id);
         if (!$heartbeatData) {
-            return response()->json(['message' => 'Heartbeat data not found'], 404);
+            return response()->json([
+                'message' => 'Heartbeat data not found'
+            ], 404);
         }
 
         $validated = $request->validate([
@@ -72,18 +69,25 @@ class HeartbeatDataController extends Controller
         ]);
 
         $heartbeatData->update($validated);
-        return response()->json($heartbeatData);
+        return response()->json([
+            'message' => 'Heartbeat data updated successfully',
+            'heartbeatData' => $heartbeatData
+        ]);
     }
 
     // Delete a heartbeat data
     public function destroy($id)
     {
-        $heartbeatData = HeartbeatData::findOrFail($id);
+        $heartbeatData = HeartbeatData::find($id);
         if (!$heartbeatData) {
-            return response()->json(['message' => 'Heartbeat data not found'], 404);
+            return response()->json([
+                'message' => 'Heartbeat data not found'
+            ], 404);
         }
 
         $heartbeatData->delete();
-        return response()->json(['message' => 'Heartbeat data deleted successfully']);
+        return response()->json([
+            'message' => 'Heartbeat data deleted successfully'
+        ]);
     }
 }
