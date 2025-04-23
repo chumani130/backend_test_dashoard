@@ -12,6 +12,7 @@ class Device extends Model
     protected $fillable = [
         'user_id',
         'device_name',
+        'device_id',
         'last_lat',
         'last_lng',
     ];
