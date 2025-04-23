@@ -4,98 +4,66 @@ namespace App\Http\Controllers;
 
 use App\Models\Device;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
 use App\Models\TamperAlert;
 use App\Models\HeartbeatData;
-use Carbon\Carbon;
 
 
-abstract class ApiController extends Controller
+class ApiController extends Controller
 {
-    public function decodePayload(Request $request)
+    public function store(Request $request)
     {
-        $validated = $request->validate([
-            'device' => 'required|string',
-            'time' => 'required|numeric',
-            'snr' => 'required|string',
-            'station' => 'required|string',
-            'data' => 'required|string',
-            'avgSnr' => 'required|string',
-            'lat' => 'required|string',
-            'lng' => 'required|string',
-            'rssi' => 'required|string',
-            'seqNumber' => 'required|string',
-        ]);
+        $payload = $request->all();
 
-        $device = Device::firstOrCreate(
-            ['device_id' => $validated['device']],
-            [
-                'device_name' => 'Device-' . $validated['device'],
-                'last_lat' => $validated['lat'],
-                'last_lng' => $validated['lng'],
-            ]
-        );
-        $device->update([
-            'last_lat' => $validated['lat'],
-            'last_lng' => $validated['lng'],
-        ]);
+        if (!isset($payload['device_id']) ||  !isset($payload['data'])) {
+            return response()->json(['error' => 'Invalid data format'], 422);
+        }
 
-        if ($validated['data'] === '01') {
+        $device = Device::where('device_id', $payload['device_id'])->first();
+        if (!$device) {
+            return response()->json(['error' => 'Device not found'], 404);
+        }
+
+        $data = $payload['data'];
+
+        if ($data === 01){
+            // Handle tamper alert
             TamperAlert::create([
                 'device_id' => $device->id,
-                'alert_time' => Carbon::createFromTimestamp($validated['time']),
-                'lat' => $validated['lat'],
-                'lng' => $validated['lng'],
+                'timestamp' => $payload['time'],
+                'lat' => $payload['lat'] ?? null,
+                'lng' => $payload['lng'] ?? null,
+                'station' => $payload['station'],
+                'rssi' => $payload['rssi'],
+                'snr' => $payload['snr'],
+                'avgSnr' => $payload['avgSnr'],
+                'seqNumber' => $payload['seqNumber'],
             ]);
-
-        } elseif (str_starts_with($validated['data'], '03')) {
-            $hex = substr($validated['data'], 2);
-            $voltage = hexdec($hex) / 1000;
+            
+        } elseif (str_starts_with($data, '03')) {
+            // Handle heartbeat
+            $voltageHex = substr($data, 2); // remove "03"
+            $voltage = hexdec($voltageHex) / 1000;
 
             HeartbeatData::create([
                 'device_id' => $device->id,
-                'station' => $validated['station'],
+                'timestamp' => $payload['time'],
                 'voltage' => $voltage,
-                'snr' => $validated['snr'],
-                'avg_snr' => $validated['avgSnr'],
-                'rssi' => $validated['rssi'],
-                'seq_number' => $validated['seqNumber'],
-                'received_at' => now(),
+                'lat' => $payload['lat'] ?? null,
+                'lng' => $payload['lng'] ?? null,
+                'station' => $payload['station'],
+                'rssi' => $payload['rssi'],
+                'snr' => $payload['snr'],
+                'avgSnr' => $payload['avgSnr'],
+                'seqNumber' => $payload['seqNumber'],
             ]);
         }
 
-        return response()->json(['message' => 'Payload processed successfully']);
-    }
-
-
-    public function login(Request $request)
-    {
-        $credentials = $request->validate([
-            'email' => 'required|email',
-            'password' => 'required|string',
+        // Update device last location
+        $device->update([
+            'last_lat' => $payload['lat'] ?? $device->last_lat,
+            'last_long' => $payload['lng'] ?? $device->last_long,
         ]);
 
-        if (!Auth::attempt($credentials)) {
-            return response()->json(['message' => 'Invalid credentials'], 401);
-        }
-
-        $user = Auth::user();
-        $token = $user->createToken('api_token')->plainTextToken;
-
-        return response()->json(['token' => $token]);
+        return response()->json(['message' => 'Data processed successfully'], 200);
     }
-
-    public function dashboard()
-    {
-        $devices = Device::with([
-            'heartbeatData' => function($query) {
-            $query->latest();
-        }, 
-        'tamperAlerts' => function($query) {
-            $query->latest();
-        }])->get();
-
-        return response()->json($devices);
-    }
-    
 }
