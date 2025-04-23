@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
+use App\Models\TamperAlert;
 
 class TamperAlertController extends Controller
 {
@@ -15,7 +16,7 @@ class TamperAlertController extends Controller
     //Get a single tamper alert
     public function show($id)
     {
-        return response()->json(TamperAlert::findOrFail($id));
+        return response()->json(TamperAlert::with('device')->findOrFail($id));
     }
 
     //Create a new tamper alert
@@ -30,33 +31,52 @@ class TamperAlertController extends Controller
         ]);
 
         $tamperAlert = TamperAlert::create($validated);
-        return response()->json($tamperAlert, 201);
+        return response()->json([
+            'message' => 'Tamper alert created successfully',
+            'tamper_alert' => $tamperAlert,
+        ], 201);
     }
+
     //Update a tamper alert
     public function update(Request $request, $id)
     {
-        $tamperAlert = tamperAlerts::find($id);
+        $tamperAlert = TamperAlert::find($id);
         if (!$tamperAlert) {
-            return response()->json(['message' => 'Tamper alert not found'], 404);
+            return response()->json([
+                'message' => 'Tamper alert not found'
+            ], 404);
         }
 
-        $alert->update($request->only([
-            'resolved_at', 'lat', 'lng',
-        ]));
+        $validated = $request->validate([
+            'resolved_at' => 'nullable|date',
+            'lat' => 'nullable|numeric',
+            'lng' => 'nullable|numeric',
+        ]);
 
-        return response()->json($alert);
+        $tamperAlert->update($request->only([
+            'resolved_at', 
+            'lat', 
+            'lng',
+        ]));
+        
+        $tamperAlert->update($validated);
     }
 
     //Delete a tamper alert
     public function destroy($id)
     {
-         $tamperAlert = TamperAlert::findOrFail($id);
+         $tamperAlert = TamperAlert::find($id);
+
         if (!$tamperAlert) {
-            return response()->json(['message' => 'Tamper alert not found'], 404);
+            return response()->json([
+                'message' => 'Tamper alert not found'
+            ], 404);
         }
 
         $tamperAlert->delete();
 
-        return response()->json(['message' => 'Tamper alert deleted'], 200);
+        return response()->json([
+            'message' => 'Tamper alert deleted'
+        ], 200);
     }
 }
