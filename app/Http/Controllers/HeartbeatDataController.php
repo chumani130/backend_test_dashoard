@@ -2,92 +2,145 @@
 
 namespace App\Http\Controllers;
 
-use Illuminate\Http\Request;
 use App\Models\HeartbeatData;
+use Illuminate\Http\Request;
+use Illuminate\Http\JsonResponse;
 
 class HeartbeatDataController extends Controller
 {
-    // Get all heartbeat data
-    public function index()
+    public function index(): JsonResponse
     {
-        $heartbeatData = HeartbeatData::all();
-        return response()->json($heartbeatData);
-    }
-
-    // Get a single heartbeat data by ID
-    public function show($id)
-    {
-        $heartbeatData = HeartbeatData::find($id);
-        if (!$heartbeatData) {
+        try {
+            $heartbeatData = HeartbeatData::with('device')->paginate(10);
             return response()->json([
-                'message' => 'Heartbeat data not found'
-            ], 404);
-        }
-        return response()->json($heartbeatData);
-    }
-
-    // Create a new heartbeat data
-    public function store(Request $request)
-    {
-        $validated = $request->validate([
-            'device_id' => 'required|exists:devices,id',
-            'station' => 'nullable|string',
-            'voltage' => 'nullable|numeric',
-            'snr' => 'nullable|numeric',
-            'avg_snr' => 'nullable|numeric',
-            'rssi' => 'nullable|numeric',
-            'seq_number' => 'nullable|integer',
-            'received_at' => 'required|date',
-        ]);
-
-        $heartbeatData = HeartbeatData::create($validated);
-        return response()->json([
-            'message' => 'Heartbeat data created successfully',
-            'heartbeatData' => $heartbeatData
-        ], 201);
-    }
-
-    // Update an existing heartbeat data
-    public function update(Request $request, $id)
-    {
-        $heartbeatData = HeartbeatData::find($id);
-        if (!$heartbeatData) {
+                'success' => true,
+                'data' => $heartbeatData
+            ]);
+        } catch (\Exception $e) {
             return response()->json([
-                'message' => 'Heartbeat data not found'
-            ], 404);
+                'success' => false,
+                'message' => 'Failed to fetch heartbeat data'
+            ], 500);
         }
-
-        $validated = $request->validate([
-            'device_id' => 'required|exists:devices,id',
-            'station' => 'nullable|string',
-            'voltage' => 'nullable|numeric',
-            'snr' => 'nullable|numeric',
-            'avg_snr' => 'nullable|numeric',
-            'rssi' => 'nullable|numeric',
-            'seq_number' => 'nullable|integer',
-            'received_at' => 'required|date',
-        ]);
-
-        $heartbeatData->update($validated);
-        return response()->json([
-            'message' => 'Heartbeat data updated successfully',
-            'heartbeatData' => $heartbeatData
-        ]);
     }
 
-    // Delete a heartbeat data
-    public function destroy($id)
+    public function show($id): JsonResponse
     {
-        $heartbeatData = HeartbeatData::find($id);
-        if (!$heartbeatData) {
+        try {
+            $heartbeatData = HeartbeatData::with('device')->find($id);
+            
+            if (!$heartbeatData) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Heartbeat data not found'
+                ], 404);
+            }
+            
             return response()->json([
-                'message' => 'Heartbeat data not found'
-            ], 404);
+                'success' => true,
+                'data' => $heartbeatData
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to fetch heartbeat data'
+            ], 500);
         }
+    }
 
-        $heartbeatData->delete();
-        return response()->json([
-            'message' => 'Heartbeat data deleted successfully'
-        ]);
+    public function store(Request $request): JsonResponse
+    {
+        try {
+            $validated = $request->validate([
+                'device_id' => 'required|exists:devices,id',
+                'station' => 'nullable|string|max:255',
+                'voltage' => 'nullable|numeric',
+                'snr' => 'nullable|numeric',
+                'avg_snr' => 'nullable|numeric',
+                'rssi' => 'nullable|numeric',
+                'seq_number' => 'nullable|integer',
+                'received_at' => 'required|date'
+            ]);
+
+            $heartbeatData = HeartbeatData::create($validated);
+            
+            return response()->json([
+                'success' => true,
+                'message' => 'Heartbeat data created successfully',
+                'data' => $heartbeatData
+            ], 201);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to create heartbeat data',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    public function update(Request $request, $id): JsonResponse
+    {
+        try {
+            $heartbeatData = HeartbeatData::find($id);
+            
+            if (!$heartbeatData) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Heartbeat data not found'
+                ], 404);
+            }
+
+            $validated = $request->validate([
+                'device_id' => 'required|exists:devices,id',
+                'station' => 'nullable|string|max:255',
+                'voltage' => 'nullable|numeric',
+                'snr' => 'nullable|numeric',
+                'avg_snr' => 'nullable|numeric',
+                'rssi' => 'nullable|numeric',
+                'seq_number' => 'nullable|integer',
+                'received_at' => 'required|date'
+            ]);
+
+            $heartbeatData->update($validated);
+            
+            return response()->json([
+                'success' => true,
+                'message' => 'Heartbeat data updated successfully',
+                'data' => $heartbeatData
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to update heartbeat data',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    public function destroy($id): JsonResponse
+    {
+        try {
+            $heartbeatData = HeartbeatData::find($id);
+            
+            if (!$heartbeatData) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Heartbeat data not found'
+                ], 404);
+            }
+
+            $heartbeatData->delete();
+            
+            return response()->json([
+                'success' => true,
+                'message' => 'Heartbeat data deleted successfully'
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to delete heartbeat data',
+                'error' => $e->getMessage()
+            ], 500);
+        }
     }
 }
