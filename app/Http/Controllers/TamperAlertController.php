@@ -4,79 +4,147 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use App\Models\TamperAlert;
+use Illuminate\Http\JsonResponse;
+
 
 class TamperAlertController extends Controller
 {
     //Get all tamper alerts
-    public function index()
+    public function index(): JsonResponse
     {
-        return response()->json(TamperAlert::with('device')->get());
-    }
-
-    //Get a single tamper alert
-    public function show($id)
-    {
-        return response()->json(TamperAlert::with('device')->findOrFail($id));
-    }
-
-    //Create a new tamper alert
-    public function store(Request $request)
-    {
-         $validated = $request->validate([
-            'device_id' => 'required|exists:devices,id',
-            'alert_time' => 'required|date',
-            'resolved_at' => 'nullable|date',
-            'lat' => 'nullable|numeric',
-            'lng' => 'nullable|numeric',
-        ]);
-
-        $tamperAlert = TamperAlert::create($validated);
-        return response()->json([
-            'message' => 'Tamper alert created successfully',
-            'tamper_alert' => $tamperAlert,
-        ], 201);
-    }
-
-    //Update a tamper alert
-    public function update(Request $request, $id)
-    {
-        $tamperAlert = TamperAlert::find($id);
-        if (!$tamperAlert) {
+        try {
+            $alerts = TamperAlert::with('device')
+                ->orderBy('alert_time', 'desc')
+                ->paginate(10);
+                
             return response()->json([
-                'message' => 'Tamper alert not found'
-            ], 404);
+                'success' => true,
+                'data' => $alerts
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to fetch tamper alerts'
+            ], 500);
         }
-
-        $validated = $request->validate([
-            'resolved_at' => 'nullable|date',
-            'lat' => 'nullable|numeric',
-            'lng' => 'nullable|numeric',
-        ]);
-
-        $tamperAlert->update($request->only([
-            'resolved_at', 
-            'lat', 
-            'lng',
-        ]));
-        
-        $tamperAlert->update($validated);
     }
 
-    //Delete a tamper alert
-    public function destroy($id)
+    public function show($id): JsonResponse
     {
-         $tamperAlert = TamperAlert::find($id);
-
-        if (!$tamperAlert) {
+        try {
+            $alert = TamperAlert::with('device')->find($id);
+            
+            if (!$alert) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Tamper alert not found'
+                ], 404);
+            }
+            
             return response()->json([
-                'message' => 'Tamper alert not found'
-            ], 404);
+                'success' => true,
+                'data' => $alert
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to fetch tamper alert'
+            ], 500);
         }
+    }
 
-        $tamperAlert->delete();
+    public function store(Request $request): JsonResponse
+    {
+        try {
+            $validated = $request->validate([
+                'device_id' => 'required|exists:devices,id',
+                'alert_time' => 'required|date',
+                'resolved_at' => 'nullable|date',
+                'lat' => 'nullable|numeric',
+                'lng' => 'nullable|numeric',
+                'status' => 'nullable|in:active,resolved'
+            ]);
 
-        return response()->json([
-            'message' => 'Tamper alert deleted'
-        ], 200);
+            $alert = TamperAlert::create($validated);
+            
+            return response()->json([
+                'success' => true,
+                'message' => 'Tamper alert created successfully',
+                'data' => $alert
+            ], 201);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to create tamper alert',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    public function update(Request $request, $id): JsonResponse
+    {
+        try {
+            $alert = TamperAlert::find($id);
+            
+            if (!$alert) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Tamper alert not found'
+                ], 404);
+            }
+
+            $validated = $request->validate([
+                'resolved_at' => 'nullable|date',
+                'lat' => 'nullable|numeric',
+                'lng' => 'nullable|numeric',
+                'status' => 'nullable|in:active,resolved'
+            ]);
+
+            // Auto-set resolved_at if status is changed to resolved
+            if (isset($validated['status']) && $validated['status'] === 'resolved') {
+                $validated['resolved_at'] = $validated['resolved_at'] ?? now();
+            }
+
+            $alert->update($validated);
+            
+            return response()->json([
+                'success' => true,
+                'message' => 'Tamper alert updated successfully',
+                'data' => $alert
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to update tamper alert',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    public function destroy($id): JsonResponse
+    {
+        try {
+            $alert = TamperAlert::find($id);
+            
+            if (!$alert) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Tamper alert not found'
+                ], 404);
+            }
+
+            $alert->delete();
+            
+            return response()->json([
+                'success' => true,
+                'message' => 'Tamper alert deleted successfully'
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to delete tamper alert',
+                'error' => $e->getMessage()
+            ], 500);
+        }
     }
 }
